@@ -6,30 +6,20 @@ import Burger from '../../components/Burger/Burger'
 import BuildControls from '../../components/Burger/BuildControls/BuildControls';
 import Modal from '../../components/UI/Modal/Modal';
 import OrderSummary from '../../components/Burger/OrderSummary/OrderSummary';
-import axios from '../../axios-orders';
 import Spinner from '../../components/UI/Spinner/Spinner';
 import withErrorHandler from '../../hoc/WithErrorHandler/withErrorHandler';
-import * as actionTypes from '../../store/actions';
+import * as actionCreators from '../../store/actions';
+import axios from '../../axios-orders';
 
 
 
 class BurgerBuilder extends Component {
     state = {
-        purchasing: false,
-        loading: false,
-        error: false
+        purchasing: false
     }
 
     componentDidMount() {
-        // axios.get('https://myburger-d74db.firebaseio.com/ingredients.json')
-        //     .then(response => {
-        //         this.setState({
-        //             ingredients: response.data
-        //         });
-        //     })
-        //     .catch(error => {
-        //         this.setState({ error: true })
-        //     })
+        this.props.onInitIngredients();
     }
 
 
@@ -57,6 +47,7 @@ class BurgerBuilder extends Component {
     }
 
     purchaseContinueHandler = () => {
+        this.props.onInitPurchase();
         this.props.history.push('/checkout');
     }
 
@@ -75,28 +66,29 @@ class BurgerBuilder extends Component {
             purchaseCancelled={this.purchaseCancelHandler}
             purchaseContinued={this.purchaseContinueHandler} />
 
-        if (this.state.loading) {
-            orderSummary = <Spinner />
+        let burger = this.props.error ? <p>Ingredient's can't be loaded!</p> : <Spinner />
+
+        if (this.props.ings) {
+            burger = (
+                <Aux>
+                    <Burger ingredients={this.props.ings} />
+                    <BuildControls
+                        ingredientAdded={this.props.onIngredientAdded}
+                        ingredientRemoved={this.props.onIngredientRemoved}
+                        disabled={disabledInfo}
+                        purchasable={this.updatePurchaseState(this.props.ings)}
+                        ordered={this.purchaseHandler}
+                        price={this.props.price} />
+                </Aux>
+            )
         }
 
-        let burger = (
-            <Aux>
-                <Burger ingredients={this.props.ings} />
-                <BuildControls
-                    ingredientAdded={this.props.onIngredientAdded}
-                    ingredientRemoved={this.props.onIngredientRemoved}
-                    disabled={disabledInfo}
-                    purchasable={this.updatePurchaseState(this.props.ings)}
-                    ordered={this.purchaseHandler}
-                    price={this.props.price} />
-            </Aux>
-        )
         return (
             <Aux>
                 <Modal show={this.state.purchasing} modalClosed={this.purchaseCancelHandler}>
                     {this.props.ings ? orderSummary : <Spinner />}
                 </Modal>
-                {this.props.ings ? burger : this.state.error ? <p>Ingredient's can't be loaded!</p> : <Spinner />}
+                {burger}
             </Aux>
         );
     }
@@ -104,21 +96,18 @@ class BurgerBuilder extends Component {
 
 const mapStateToProps = (state) => {
     return {
-        ings: state.ingredients,
-        price: state.totalPrice
+        ings: state.burger.ingredients,
+        price: state.burger.totalPrice,
+        error: state.burger.error
     }
 }
 
 const mapDispatchToProps = (dispatch) => {
     return {
-        onIngredientAdded: (ing) => dispatch({
-            type: actionTypes.ADD_INRGEDIENTS,
-            payload: ing
-        }),
-        onIngredientRemoved: (ing) => dispatch({
-            type: actionTypes.REMOVE_INRGEDIENTS,
-            payload: ing
-        })
+        onIngredientAdded: (ing) => dispatch(actionCreators.addIngredient(ing)),
+        onIngredientRemoved: (ing) => dispatch(actionCreators.removeIngredient(ing)),
+        onInitIngredients: () => dispatch(actionCreators.initIngredients()),
+        onInitPurchase: () => dispatch(actionCreators.purchaseInit())
     }
 }
 
